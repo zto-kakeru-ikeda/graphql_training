@@ -82,14 +82,91 @@
     <div v-else-if="error" class="error">Error: {{ error.message }}</div>
     <div v-else-if="users.length > 0" class="users-grid">
       <div v-for="user in users" :key="user.id" class="user-card">
-        <img :src="user.avatar || 'https://via.placeholder.com/100'" :alt="user.fullName" class="avatar" />
-        <h3>{{ user.fullName }}</h3>
-        <p class="username">@{{ user.username }}</p>
-        <p class="email">{{ user.email }}</p>
-        <p class="bio">{{ user.bio || 'No bio available' }}</p>
-        <div class="posts-count">
-          📝 {{ user.posts.length }} posts
-        </div>
+        <!-- 編集モードではない場合：通常表示 -->
+        <template v-if="!isEditing(user.id)">
+          <img :src="user.avatar || 'https://via.placeholder.com/100'" :alt="user.fullName" class="avatar" />
+          <h3>{{ user.fullName }}</h3>
+          <p class="username">@{{ user.username }}</p>
+          <p class="email">{{ user.email }}</p>
+          <p class="bio">{{ user.bio || 'No bio available' }}</p>
+          <div class="posts-count">
+            📝 {{ user.posts.length }} posts
+          </div>
+          <button @click="startEditing(user)" class="btn-edit">
+            ✏️ 編集
+          </button>
+        </template>
+
+        <!-- 編集モード：フォーム表示 -->
+        <template v-else>
+          <h3 class="edit-title">✏️ ユーザー編集</h3>
+          <form @submit.prevent="handleUpdate" class="edit-form">
+            <div class="form-group-small">
+              <label>ユーザー名 *</label>
+              <input 
+                v-model="editFormData.username" 
+                type="text" 
+                required 
+              />
+            </div>
+
+            <div class="form-group-small">
+              <label>メール *</label>
+              <input 
+                v-model="editFormData.email" 
+                type="email" 
+                required 
+              />
+            </div>
+
+            <div class="form-group-small">
+              <label>フルネーム *</label>
+              <input 
+                v-model="editFormData.fullName" 
+                type="text" 
+                required 
+              />
+            </div>
+
+            <div class="form-group-small">
+              <label>自己紹介</label>
+              <textarea 
+                v-model="editFormData.bio" 
+                rows="2"
+              ></textarea>
+            </div>
+
+            <div class="form-group-small">
+              <label>アバターURL</label>
+              <input 
+                v-model="editFormData.avatar" 
+                type="url" 
+              />
+            </div>
+
+            <div class="edit-actions">
+              <button 
+                type="submit" 
+                class="btn-save" 
+                :disabled="updating || !isEditFormValid"
+              >
+                {{ updating ? '保存中...' : '💾 保存' }}
+              </button>
+              <button 
+                type="button" 
+                @click="cancelEditing" 
+                class="btn-cancel"
+                :disabled="updating"
+              >
+                ❌ キャンセル
+              </button>
+            </div>
+
+            <div v-if="updateError" class="error-message-small">
+              エラー: {{ updateError.message }}
+            </div>
+          </form>
+        </template>
       </div>
     </div>
 
@@ -112,25 +189,45 @@ const {
   loading,
   error,
   
-  // フォーム関連
+  // フォーム関連（新規作成）
   showForm,
   formData,
   toggleForm,
   isFormValid,
   
-  // ミューテーション関連
+  // ミューテーション関連（新規作成）
   createUser,
   creating,
   createError,
+
+  // 編集関連
+  editFormData,
+  startEditing,
+  cancelEditing,
+  updateUser,
+  updating,
+  updateError,
+  isEditFormValid,
+  isEditing,
 } = useUsers();
 
 /**
- * フォーム送信ハンドラ（View層の責務）
+ * フォーム送信ハンドラ（新規作成）
  */
 const handleSubmit = async () => {
   const success = await createUser();
   if (success) {
     alert('✅ ユーザーが作成されました！');
+  }
+};
+
+/**
+ * フォーム送信ハンドラ（更新）
+ */
+const handleUpdate = async () => {
+  const success = await updateUser();
+  if (success) {
+    alert('✅ ユーザー情報が更新されました！');
   }
 };
 </script>
@@ -330,6 +427,131 @@ h3 {
   border-radius: 6px;
   color: #2c3e50;
   font-weight: 500;
+}
+
+/* 編集ボタン */
+.btn-edit {
+  margin-top: 1rem;
+  padding: 0.5rem 1.5rem;
+  background: #f39c12;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.2s;
+  width: 100%;
+}
+
+.btn-edit:hover {
+  background: #e67e22;
+  transform: translateY(-2px);
+}
+
+/* 編集フォーム */
+.edit-title {
+  color: #f39c12;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.edit-form {
+  text-align: left;
+}
+
+.form-group-small {
+  margin-bottom: 1rem;
+}
+
+.form-group-small label {
+  display: block;
+  margin-bottom: 0.3rem;
+  color: #2c3e50;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.form-group-small input,
+.form-group-small textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 2px solid #ecf0f1;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: border-color 0.3s;
+  box-sizing: border-box;
+}
+
+.form-group-small input:focus,
+.form-group-small textarea:focus {
+  outline: none;
+  border-color: #f39c12;
+}
+
+.form-group-small textarea {
+  resize: vertical;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.btn-save {
+  flex: 1;
+  padding: 0.6rem;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.btn-save:hover:not(:disabled) {
+  background: #229954;
+}
+
+.btn-save:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
+}
+
+.btn-cancel {
+  flex: 1;
+  padding: 0.6rem;
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: #c0392b;
+}
+
+.btn-cancel:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
+}
+
+.error-message-small {
+  margin-top: 0.8rem;
+  padding: 0.6rem;
+  background: #ffebee;
+  color: #c62828;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  text-align: center;
 }
 
 .back-link {

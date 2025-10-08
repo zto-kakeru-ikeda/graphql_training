@@ -178,3 +178,18 @@ export const CREATE_USER = gql`
     }
   }
 `;
+
+// ユーザー更新
+export const UPDATE_USER = gql`
+  mutation UpdateUser($id: ID!, $input: UpdateUserInput!) {
+    updateUser(id: $id, input: $input) {
+      id
+      username
+      email
+      fullName
+      bio
+      avatar
+      updatedAt
+    }
+  }
+`;
