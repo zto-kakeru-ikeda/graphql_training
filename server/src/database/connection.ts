@@ -85,12 +85,24 @@ export async function initDatabase(): Promise<Database<sqlite3.Database, sqlite3
       FOREIGN KEY (postId) REFERENCES posts(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS dislikes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL,
+      postId INTEGER NOT NULL,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(userId, postId),
+      FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (postId) REFERENCES posts(id) ON DELETE CASCADE
+    );
+
     CREATE INDEX IF NOT EXISTS idx_posts_authorId ON posts(authorId);
     CREATE INDEX IF NOT EXISTS idx_posts_categoryId ON posts(categoryId);
     CREATE INDEX IF NOT EXISTS idx_comments_postId ON comments(postId);
     CREATE INDEX IF NOT EXISTS idx_comments_authorId ON comments(authorId);
     CREATE INDEX IF NOT EXISTS idx_likes_userId ON likes(userId);
     CREATE INDEX IF NOT EXISTS idx_likes_postId ON likes(postId);
+    CREATE INDEX IF NOT EXISTS idx_dislikes_userId ON dislikes(userId);
+    CREATE INDEX IF NOT EXISTS idx_dislikes_postId ON dislikes(postId);
   `);
 
   console.log('✅ Database initialized successfully');

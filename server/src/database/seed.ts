@@ -8,6 +8,7 @@ async function seed() {
   // Clear existing data
   await db.exec(`
     DELETE FROM likes;
+    DELETE FROM dislikes;
     DELETE FROM post_tags;
     DELETE FROM comments;
     DELETE FROM posts;
@@ -364,6 +365,37 @@ async function seed() {
   }
   console.log(`✅ Inserted ${likes.length} likes`);
 
+  // Insert Dislikes
+  const dislikes = [
+    { userId: 7, postId: 1 }, { userId: 9, postId: 1 },
+    { userId: 3, postId: 2 }, { userId: 9, postId: 2 },
+    { userId: 2, postId: 3 }, { userId: 6, postId: 3 }, { userId: 10, postId: 3 },
+    { userId: 1, postId: 4 }, { userId: 6, postId: 4 },
+    { userId: 2, postId: 5 }, { userId: 4, postId: 5 }, { userId: 7, postId: 5 },
+    { userId: 1, postId: 6 }, { userId: 5, postId: 6 },
+    { userId: 4, postId: 7 }, { userId: 8, postId: 7 }, { userId: 10, postId: 7 },
+    { userId: 5, postId: 8 }, { userId: 7, postId: 8 },
+    { userId: 3, postId: 9 }, { userId: 6, postId: 9 }, { userId: 8, postId: 9 },
+    { userId: 2, postId: 10 }, { userId: 9, postId: 10 },
+    { userId: 5, postId: 11 }, { userId: 10, postId: 11 },
+    { userId: 3, postId: 12 }, { userId: 7, postId: 12 }, { userId: 8, postId: 12 },
+    { userId: 1, postId: 13 }, { userId: 8, postId: 13 },
+    { userId: 3, postId: 14 }, { userId: 6, postId: 14 }, { userId: 9, postId: 14 },
+    { userId: 1, postId: 15 }, { userId: 3, postId: 15 },
+    { userId: 2, postId: 17 }, { userId: 7, postId: 17 }, { userId: 9, postId: 17 },
+    { userId: 1, postId: 18 }, { userId: 6, postId: 18 },
+    { userId: 4, postId: 19 }, { userId: 7, postId: 19 }, { userId: 10, postId: 19 },
+    { userId: 3, postId: 20 }, { userId: 8, postId: 20 },
+  ];
+
+  for (const dislike of dislikes) {
+    await db.run(
+      'INSERT INTO dislikes (userId, postId) VALUES (?, ?)',
+      [dislike.userId, dislike.postId]
+    );
+  }
+  console.log(`✅ Inserted ${dislikes.length} dislikes`);
+
   console.log('🎉 Database seeding completed successfully!');
   console.log('\nSummary:');
   console.log(`- ${users.length} users`);
@@ -372,6 +404,7 @@ async function seed() {
   console.log(`- ${posts.length} posts`);
   console.log(`- ${comments.length} comments`);
   console.log(`- ${likes.length} likes`);
+  console.log(`- ${dislikes.length} dislikes`);
 }
 
 seed().catch((error) => {

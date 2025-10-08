@@ -11,6 +11,7 @@ export const typeDefs = gql`
     posts: [Post!]!
     comments: [Comment!]!
     likes: [Like!]!
+    dislikes: [Dislike!]!
     createdAt: String!
     updatedAt: String!
   }
@@ -26,6 +27,8 @@ export const typeDefs = gql`
     comments: [Comment!]!
     likes: [Like!]!
     likeCount: Int!
+    dislikes: [Dislike!]!
+    dislikeCount: Int!
     viewCount: Int!
     createdAt: String!
     updatedAt: String!
@@ -66,6 +69,18 @@ export const typeDefs = gql`
     createdAt: String!
   }
 
+  type Dislike {
+    id: ID!
+    user: User!
+    post: Post!
+    createdAt: String!
+  }
+
+  type AuthPayload {
+    user: User!
+    message: String!
+  }
+
   type Query {
     # User queries
     users: [User!]!
@@ -104,9 +119,13 @@ export const typeDefs = gql`
     totalPosts: Int!
     totalComments: Int!
     totalLikes: Int!
+    totalDislikes: Int!
   }
 
   type Mutation {
+    # Authentication
+    login(username: String!, email: String!): AuthPayload!
+
     # User mutations
     createUser(input: CreateUserInput!): User!
     updateUser(id: ID!, input: UpdateUserInput!): User!
@@ -128,6 +147,10 @@ export const typeDefs = gql`
     # Like mutations
     likePost(postId: ID!, userId: ID!): Like!
     unlikePost(postId: ID!, userId: ID!): Boolean!
+
+    # Dislike mutations
+    dislikePost(postId: ID!, userId: ID!): Dislike!
+    undislikePost(postId: ID!, userId: ID!): Boolean!
 
     # Category mutations
     createCategory(input: CreateCategoryInput!): Category!

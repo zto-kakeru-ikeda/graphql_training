@@ -1,5 +1,5 @@
 import { getDatabase } from '../database/connection';
-import type { User, Post, Comment, Category, Tag, Like } from '../types/models';
+import type { User, Post, Comment, Category, Tag, Like, Dislike } from '../types/models';
 
 export const resolvers = {
   Query: {
@@ -123,11 +123,12 @@ export const resolvers = {
     // Statistics
     stats: async () => {
       const db = getDatabase();
-      const [users, posts, comments, likes] = await Promise.all([
+      const [users, posts, comments, likes, dislikes] = await Promise.all([
         db.get('SELECT COUNT(*) as count FROM users'),
         db.get('SELECT COUNT(*) as count FROM posts'),
         db.get('SELECT COUNT(*) as count FROM comments'),
         db.get('SELECT COUNT(*) as count FROM likes'),
+        db.get('SELECT COUNT(*) as count FROM dislikes'),
       ]);
 
       return {
@@ -135,6 +136,7 @@ export const resolvers = {
         totalPosts: posts.count,
         totalComments: comments.count,
         totalLikes: likes.count,
+        totalDislikes: dislikes.count,
       };
     },
   },
@@ -153,6 +155,11 @@ export const resolvers = {
     likes: async (user: User): Promise<Like[]> => {
       const db = getDatabase();
       return await db.all('SELECT * FROM likes WHERE userId = ?', user.id);
+    },
+
+    dislikes: async (user: User): Promise<Dislike[]> => {
+      const db = getDatabase();
+      return await db.all('SELECT * FROM dislikes WHERE userId = ?', user.id);
     },
   },
 
@@ -191,6 +198,17 @@ export const resolvers = {
     likeCount: async (post: Post): Promise<number> => {
       const db = getDatabase();
       const result = await db.get('SELECT COUNT(*) as count FROM likes WHERE postId = ?', post.id);
+      return result.count;
+    },
+
+    dislikes: async (post: Post): Promise<Dislike[]> => {
+      const db = getDatabase();
+      return await db.all('SELECT * FROM dislikes WHERE postId = ?', post.id);
+    },
+
+    dislikeCount: async (post: Post): Promise<number> => {
+      const db = getDatabase();
+      const result = await db.get('SELECT COUNT(*) as count FROM dislikes WHERE postId = ?', post.id);
       return result.count;
     },
   },
@@ -249,7 +267,37 @@ export const resolvers = {
     },
   },
 
+  Dislike: {
+    user: async (dislike: Dislike): Promise<User | undefined> => {
+      const db = getDatabase();
+      return await db.get('SELECT * FROM users WHERE id = ?', dislike.userId);
+    },
+
+    post: async (dislike: Dislike): Promise<Post | undefined> => {
+      const db = getDatabase();
+      return await db.get('SELECT * FROM posts WHERE id = ?', dislike.postId);
+    },
+  },
+
   Mutation: {
+    // Authentication
+    login: async (_: unknown, { username, email }: { username: string; email: string }): Promise<any> => {
+      const db = getDatabase();
+      const user = await db.get(
+        'SELECT * FROM users WHERE username = ? AND email = ?',
+        [username, email]
+      );
+
+      if (!user) {
+        throw new Error('ユーザー名またはメールアドレスが一致しません');
+      }
+
+      return {
+        user,
+        message: `Welcome back, ${user.fullName}!`,
+      };
+    },
+
     // User mutations
     createUser: async (_: unknown, { input }: { input: any }): Promise<User> => {
       const db = getDatabase();
@@ -407,6 +455,19 @@ export const resolvers = {
     unlikePost: async (_: unknown, { postId, userId }: { postId: number; userId: number }): Promise<boolean> => {
       const db = getDatabase();
       await db.run('DELETE FROM likes WHERE userId = ? AND postId = ?', [userId, postId]);
+      return true;
+    },
+
+    // Dislike mutations
+    dislikePost: async (_: unknown, { postId, userId }: { postId: number; userId: number }): Promise<Dislike> => {
+      const db = getDatabase();
+      const result = await db.run('INSERT INTO dislikes (userId, postId) VALUES (?, ?)', [userId, postId]);
+      return (await db.get('SELECT * FROM dislikes WHERE id = ?', result.lastID))!;
+    },
+
+    undislikePost: async (_: unknown, { postId, userId }: { postId: number; userId: number }): Promise<boolean> => {
+      const db = getDatabase();
+      await db.run('DELETE FROM dislikes WHERE userId = ? AND postId = ?', [userId, postId]);
       return true;
     },
 

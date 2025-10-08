@@ -57,3 +57,10 @@ export interface Like {
   postId: number;
   createdAt: string;
 }
+
+export interface Dislike {
+  id: number;
+  userId: number;
+  postId: number;
+  createdAt: string;
+}
