@@ -1,6 +1,82 @@
 <template>
   <div class="users-page">
     <h1>👥 Users</h1>
+
+    <!-- 新規ユーザー追加ボタン -->
+    <div class="add-user-section">
+      <button @click="showForm = !showForm" class="btn-add">
+        {{ showForm ? '❌ キャンセル' : '➕ 新規ユーザー追加' }}
+      </button>
+    </div>
+
+    <!-- ユーザー作成フォーム -->
+    <div v-if="showForm" class="user-form">
+      <h2>新しいユーザーを作成</h2>
+      <form @submit.prevent="handleCreateUser">
+        <div class="form-group">
+          <label for="username">ユーザー名 *</label>
+          <input 
+            id="username" 
+            v-model="formData.username" 
+            type="text" 
+            required 
+            placeholder="例: johndoe"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="email">メールアドレス *</label>
+          <input 
+            id="email" 
+            v-model="formData.email" 
+            type="email" 
+            required 
+            placeholder="例: john@example.com"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="fullName">フルネーム *</label>
+          <input 
+            id="fullName" 
+            v-model="formData.fullName" 
+            type="text" 
+            required 
+            placeholder="例: John Doe"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="bio">自己紹介</label>
+          <textarea 
+            id="bio" 
+            v-model="formData.bio" 
+            rows="3" 
+            placeholder="あなたについて教えてください"
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="avatar">アバターURL</label>
+          <input 
+            id="avatar" 
+            v-model="formData.avatar" 
+            type="url" 
+            placeholder="例: https://i.pravatar.cc/150?img=5"
+          />
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-submit" :disabled="creating">
+            {{ creating ? '作成中...' : '✅ ユーザーを作成' }}
+          </button>
+        </div>
+
+        <div v-if="createError" class="error-message">
+          エラー: {{ createError.message }}
+        </div>
+      </form>
+    </div>
     
     <div v-if="loading" class="loading">Loading users...</div>
     <div v-else-if="error" class="error">Error: {{ error.message }}</div>
@@ -24,10 +100,57 @@
 </template>
 
 <script setup lang="ts">
-import { useQuery } from '@vue/apollo-composable';
-import { GET_USERS } from '../graphql/queries';
+import { ref, reactive } from 'vue';
+import { useQuery, useMutation } from '@vue/apollo-composable';
+import { GET_USERS, CREATE_USER } from '../graphql/queries';
 
-const { result, loading, error } = useQuery(GET_USERS);
+// ユーザー一覧取得
+const { result, loading, error, refetch } = useQuery(GET_USERS);
+
+// フォーム表示状態
+const showForm = ref(false);
+
+// フォームデータ
+const formData = reactive({
+  username: '',
+  email: '',
+  fullName: '',
+  bio: '',
+  avatar: '',
+});
+
+// ユーザー作成ミューテーション
+const { mutate: createUser, loading: creating, error: createError } = useMutation(CREATE_USER);
+
+// フォーム送信ハンドラ
+const handleCreateUser = async () => {
+  try {
+    await createUser({
+      input: {
+        username: formData.username,
+        email: formData.email,
+        fullName: formData.fullName,
+        bio: formData.bio || undefined,
+        avatar: formData.avatar || undefined,
+      },
+    });
+
+    // 成功したらフォームをリセット
+    formData.username = '';
+    formData.email = '';
+    formData.fullName = '';
+    formData.bio = '';
+    formData.avatar = '';
+    showForm.value = false;
+
+    // ユーザー一覧を再取得
+    await refetch();
+
+    alert('✅ ユーザーが作成されました！');
+  } catch (err) {
+    console.error('ユーザー作成エラー:', err);
+  }
+};
 </script>
 
 <style scoped>
@@ -41,6 +164,117 @@ h1 {
   text-align: center;
   color: #2c3e50;
   margin-bottom: 2rem;
+}
+
+/* 新規追加ボタンセクション */
+.add-user-section {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.btn-add {
+  padding: 1rem 2rem;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.2s;
+}
+
+.btn-add:hover {
+  background: #229954;
+  transform: translateY(-2px);
+}
+
+/* ユーザー作成フォーム */
+.user-form {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 3rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 3rem;
+}
+
+.user-form h2 {
+  color: #2c3e50;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #ecf0f1;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border-color 0.3s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.form-group textarea {
+  resize: vertical;
+}
+
+.form-actions {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.btn-submit {
+  padding: 1rem 3rem;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.2s;
+}
+
+.btn-submit:hover:not(:disabled) {
+  background: #2980b9;
+  transform: translateY(-2px);
+}
+
+.btn-submit:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
+}
+
+.error-message {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #ffebee;
+  color: #c62828;
+  border-radius: 6px;
+  text-align: center;
 }
 
 .loading, .error {

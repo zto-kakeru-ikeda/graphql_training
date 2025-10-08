@@ -162,3 +162,19 @@ export const INCREMENT_POST_VIEW = gql`
     }
   }
 `;
+
+// ユーザー作成
+export const CREATE_USER = gql`
+  mutation CreateUser($input: CreateUserInput!) {
+    createUser(input: $input) {
+      id
+      username
+      email
+      fullName
+      bio
+      avatar
+      createdAt
+      updatedAt
+    }
+  }
+`;
