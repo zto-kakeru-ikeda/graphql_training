@@ -1,5 +1,22 @@
 import gql from 'graphql-tag';
 
+// ログイン
+export const LOGIN = gql`
+  mutation Login($username: String!, $email: String!) {
+    login(username: $username, email: $email) {
+      user {
+        id
+        username
+        fullName
+        email
+        avatar
+        bio
+      }
+      message
+    }
+  }
+`;
+
 // ユーザー一覧取得
 export const GET_USERS = gql`
   query GetUsers {
@@ -28,6 +45,7 @@ export const GET_POSTS = gql`
       published
       viewCount
       likeCount
+      dislikeCount
       createdAt
       author {
         id
@@ -59,6 +77,7 @@ export const GET_POST = gql`
       published
       viewCount
       likeCount
+      dislikeCount
       createdAt
       updatedAt
       author {
@@ -112,6 +131,7 @@ export const GET_STATS = gql`
       totalPosts
       totalComments
       totalLikes
+      totalDislikes
     }
   }
 `;
@@ -150,6 +170,37 @@ export const LIKE_POST = gql`
         likeCount
       }
     }
+  }
+`;
+
+// よくないね
+export const DISLIKE_POST = gql`
+  mutation DislikePost($postId: ID!, $userId: ID!) {
+    dislikePost(postId: $postId, userId: $userId) {
+      id
+      user {
+        id
+        username
+      }
+      post {
+        id
+        dislikeCount
+      }
+    }
+  }
+`;
+
+// いいね解除
+export const UNLIKE_POST = gql`
+  mutation UnlikePost($postId: ID!, $userId: ID!) {
+    unlikePost(postId: $postId, userId: $userId)
+  }
+`;
+
+// よくないね解除
+export const UNDISLIKE_POST = gql`
+  mutation UndislikePost($postId: ID!, $userId: ID!) {
+    undislikePost(postId: $postId, userId: $userId)
   }
 `;
 

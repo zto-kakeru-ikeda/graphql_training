@@ -1,4 +1,15 @@
 <script setup lang="ts">
+import { useAuth } from './composables/useAuth';
+import { useRouter } from 'vue-router';
+
+const { currentUser, isAuthenticated, logout } = useAuth();
+const router = useRouter();
+
+function handleLogout() {
+  logout();
+  alert('ログアウトしました');
+  router.push('/login');
+}
 </script>
 
 <template>
@@ -10,6 +21,18 @@
           <router-link to="/">Home</router-link>
           <router-link to="/users">Users</router-link>
           <router-link to="/posts">Posts</router-link>
+        </div>
+        <div class="nav-auth">
+          <template v-if="isAuthenticated">
+            <div class="user-info">
+              <img :src="currentUser?.avatar || 'https://via.placeholder.com/40'" :alt="currentUser?.fullName" class="user-avatar" />
+              <span class="user-name">{{ currentUser?.fullName }}</span>
+            </div>
+            <button @click="handleLogout" class="btn-logout">Logout</button>
+          </template>
+          <template v-else>
+            <router-link to="/login" class="btn-login">Login</router-link>
+          </template>
         </div>
       </div>
     </nav>
@@ -94,6 +117,62 @@ body {
   right: 0;
   height: 2px;
   background: #3498db;
+}
+
+.nav-auth {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.user-name {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.btn-login {
+  padding: 0.5rem 1.5rem;
+  background: #3498db;
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: background 0.3s;
+}
+
+.btn-login:hover {
+  background: #2980b9;
+}
+
+.btn-logout {
+  padding: 0.5rem 1.5rem;
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.btn-logout:hover {
+  background: #c0392b;
 }
 
 main {

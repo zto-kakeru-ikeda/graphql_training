@@ -24,6 +24,7 @@
         <div class="info-item">📅 {{ formatDate(result.post.createdAt) }}</div>
         <div class="info-item">👁️ {{ result.post.viewCount }} views</div>
         <div class="info-item">❤️ {{ result.post.likeCount }} likes</div>
+        <div class="info-item">💔 {{ result.post.dislikeCount }} dislikes</div>
       </div>
 
       <div v-if="result.post.category" class="category">
@@ -77,6 +78,9 @@
         <button @click="handleLike" class="btn btn-like" :disabled="likeMutationLoading">
           {{ likeMutationLoading ? 'Liking...' : '❤️ Like this post' }}
         </button>
+        <button @click="handleDislike" class="btn btn-dislike" :disabled="dislikeMutationLoading">
+          {{ dislikeMutationLoading ? 'Disliking...' : '💔 Dislike this post' }}
+        </button>
         <button @click="handleIncrementView" class="btn btn-view" :disabled="viewMutationLoading">
           {{ viewMutationLoading ? 'Recording...' : '👁️ Record View' }}
         </button>
@@ -90,26 +94,61 @@
 </template>
 
 <script setup lang="ts">
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useQuery, useMutation } from '@vue/apollo-composable';
-import { GET_POST, LIKE_POST, INCREMENT_POST_VIEW } from '../graphql/queries';
+import { GET_POST, LIKE_POST, DISLIKE_POST, INCREMENT_POST_VIEW } from '../graphql/queries';
+import { useAuth } from '../composables/useAuth';
 
 const route = useRoute();
+const router = useRouter();
 const postId = route.params.id as string;
+const { getUserId, isAuthenticated } = useAuth();
 
 const { result, loading, error, refetch } = useQuery(GET_POST, { id: postId });
 
 const { mutate: likePost, loading: likeMutationLoading } = useMutation(LIKE_POST);
+const { mutate: dislikePost, loading: dislikeMutationLoading } = useMutation(DISLIKE_POST);
 const { mutate: incrementView, loading: viewMutationLoading } = useMutation(INCREMENT_POST_VIEW);
 
 async function handleLike() {
+  if (!isAuthenticated.value) {
+    alert('いいねするにはログインが必要です');
+    router.push('/login');
+    return;
+  }
+
   try {
-    // Use author ID 1 as default user for demo
-    await likePost({ postId, userId: '1' });
+    const userId = getUserId();
+    await likePost({ postId, userId });
     await refetch();
     alert('Post liked successfully!');
   } catch (err: any) {
-    alert('Error liking post: ' + err.message);
+    if (err.message.includes('UNIQUE constraint failed')) {
+      alert('すでにいいね済みです');
+    } else {
+      alert('Error liking post: ' + err.message);
+    }
+  }
+}
+
+async function handleDislike() {
+  if (!isAuthenticated.value) {
+    alert('よくないねするにはログインが必要です');
+    router.push('/login');
+    return;
+  }
+
+  try {
+    const userId = getUserId();
+    await dislikePost({ postId, userId });
+    await refetch();
+    alert('Post disliked successfully!');
+  } catch (err: any) {
+    if (err.message.includes('UNIQUE constraint failed')) {
+      alert('すでによくないね済みです');
+    } else {
+      alert('Error disliking post: ' + err.message);
+    }
   }
 }
 
@@ -404,6 +443,15 @@ function formatContent(content: string): string {
 
 .btn-like:hover:not(:disabled) {
   background: #c0392b;
+}
+
+.btn-dislike {
+  background: #95a5a6;
+  color: white;
+}
+
+.btn-dislike:hover:not(:disabled) {
+  background: #7f8c8d;
 }
 
 .btn-view {
