@@ -4,7 +4,7 @@
 
     <!-- 新規ユーザー追加ボタン -->
     <div class="add-user-section">
-      <button @click="showForm = !showForm" class="btn-add">
+      <button @click="toggleForm" class="btn-add">
         {{ showForm ? '❌ キャンセル' : '➕ 新規ユーザー追加' }}
       </button>
     </div>
@@ -12,7 +12,7 @@
     <!-- ユーザー作成フォーム -->
     <div v-if="showForm" class="user-form">
       <h2>新しいユーザーを作成</h2>
-      <form @submit.prevent="handleCreateUser">
+      <form @submit.prevent="handleSubmit">
         <div class="form-group">
           <label for="username">ユーザー名 *</label>
           <input 
@@ -67,7 +67,7 @@
         </div>
 
         <div class="form-actions">
-          <button type="submit" class="btn-submit" :disabled="creating">
+          <button type="submit" class="btn-submit" :disabled="creating || !isFormValid">
             {{ creating ? '作成中...' : '✅ ユーザーを作成' }}
           </button>
         </div>
@@ -80,8 +80,8 @@
     
     <div v-if="loading" class="loading">Loading users...</div>
     <div v-else-if="error" class="error">Error: {{ error.message }}</div>
-    <div v-else-if="result" class="users-grid">
-      <div v-for="user in result.users" :key="user.id" class="user-card">
+    <div v-else-if="users.length > 0" class="users-grid">
+      <div v-for="user in users" :key="user.id" class="user-card">
         <img :src="user.avatar || 'https://via.placeholder.com/100'" :alt="user.fullName" class="avatar" />
         <h3>{{ user.fullName }}</h3>
         <p class="username">@{{ user.username }}</p>
@@ -100,55 +100,37 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
-import { useQuery, useMutation } from '@vue/apollo-composable';
-import { GET_USERS, CREATE_USER } from '../graphql/queries';
+import { useUsers } from '../composables/useUsers';
 
-// ユーザー一覧取得
-const { result, loading, error, refetch } = useQuery(GET_USERS);
+// ========================================
+// ビジネスロジックはuseUsersコンポーザブルに委譲
+// このコンポーネントはView責務のみ
+// ========================================
+const {
+  // 一覧関連
+  users,
+  loading,
+  error,
+  
+  // フォーム関連
+  showForm,
+  formData,
+  toggleForm,
+  isFormValid,
+  
+  // ミューテーション関連
+  createUser,
+  creating,
+  createError,
+} = useUsers();
 
-// フォーム表示状態
-const showForm = ref(false);
-
-// フォームデータ
-const formData = reactive({
-  username: '',
-  email: '',
-  fullName: '',
-  bio: '',
-  avatar: '',
-});
-
-// ユーザー作成ミューテーション
-const { mutate: createUser, loading: creating, error: createError } = useMutation(CREATE_USER);
-
-// フォーム送信ハンドラ
-const handleCreateUser = async () => {
-  try {
-    await createUser({
-      input: {
-        username: formData.username,
-        email: formData.email,
-        fullName: formData.fullName,
-        bio: formData.bio || undefined,
-        avatar: formData.avatar || undefined,
-      },
-    });
-
-    // 成功したらフォームをリセット
-    formData.username = '';
-    formData.email = '';
-    formData.fullName = '';
-    formData.bio = '';
-    formData.avatar = '';
-    showForm.value = false;
-
-    // ユーザー一覧を再取得
-    await refetch();
-
+/**
+ * フォーム送信ハンドラ（View層の責務）
+ */
+const handleSubmit = async () => {
+  const success = await createUser();
+  if (success) {
     alert('✅ ユーザーが作成されました！');
-  } catch (err) {
-    console.error('ユーザー作成エラー:', err);
   }
 };
 </script>
