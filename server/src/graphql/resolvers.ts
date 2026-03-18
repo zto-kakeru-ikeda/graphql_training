@@ -123,12 +123,14 @@ export const resolvers = {
     // Statistics
     stats: async () => {
       const db = getDatabase();
-      const [users, posts, comments, likes, dislikes] = await Promise.all([
+      const [users, posts, comments, likes, dislikes, tags, views] = await Promise.all([
         db.get('SELECT COUNT(*) as count FROM users'),
         db.get('SELECT COUNT(*) as count FROM posts'),
         db.get('SELECT COUNT(*) as count FROM comments'),
         db.get('SELECT COUNT(*) as count FROM likes'),
         db.get('SELECT COUNT(*) as count FROM dislikes'),
+        db.get('SELECT COUNT(*) as count FROM tags'),
+        db.get('SELECT COALESCE(SUM(viewCount), 0) as count FROM posts'),
       ]);
 
       return {
@@ -137,7 +139,87 @@ export const resolvers = {
         totalComments: comments.count,
         totalLikes: likes.count,
         totalDislikes: dislikes.count,
+        totalTags: tags.count,
+        totalViews: views.count,
       };
+    },
+
+    // Advanced queries
+    popularPosts: async (_: unknown, { limit = 10 }: { limit?: number }): Promise<Post[]> => {
+      const db = getDatabase();
+      return await db.all(
+        'SELECT * FROM posts WHERE published = 1 ORDER BY viewCount DESC LIMIT ?',
+        limit
+      );
+    },
+
+    mostLikedPosts: async (_: unknown, { limit = 10 }: { limit?: number }): Promise<Post[]> => {
+      const db = getDatabase();
+      return await db.all(
+        `SELECT p.* FROM posts p
+         LEFT JOIN likes l ON p.id = l.postId
+         WHERE p.published = 1
+         GROUP BY p.id
+         ORDER BY COUNT(l.id) DESC
+         LIMIT ?`,
+        limit
+      );
+    },
+
+    recentPosts: async (_: unknown, { limit = 10 }: { limit?: number }): Promise<Post[]> => {
+      const db = getDatabase();
+      return await db.all(
+        'SELECT * FROM posts WHERE published = 1 ORDER BY createdAt DESC LIMIT ?',
+        limit
+      );
+    },
+
+    topCommenters: async (_: unknown, { limit = 10 }: { limit?: number }): Promise<User[]> => {
+      const db = getDatabase();
+      return await db.all(
+        `SELECT u.* FROM users u
+         LEFT JOIN comments c ON u.id = c.authorId
+         GROUP BY u.id
+         ORDER BY COUNT(c.id) DESC
+         LIMIT ?`,
+        limit
+      );
+    },
+
+    postsByMultipleTags: async (_: unknown, { tagIds }: { tagIds: number[] }): Promise<Post[]> => {
+      const db = getDatabase();
+      const placeholders = tagIds.map(() => '?').join(', ');
+      return await db.all(
+        `SELECT p.* FROM posts p
+         INNER JOIN post_tags pt ON p.id = pt.postId
+         WHERE pt.tagId IN (${placeholders})
+         GROUP BY p.id
+         HAVING COUNT(DISTINCT pt.tagId) = ?
+         ORDER BY p.createdAt DESC`,
+        [...tagIds, tagIds.length]
+      );
+    },
+
+    relatedPosts: async (_: unknown, { postId, limit = 5 }: { postId: number; limit?: number }): Promise<Post[]> => {
+      const db = getDatabase();
+      const sourcePost = await db.get('SELECT * FROM posts WHERE id = ?', postId);
+      if (!sourcePost) return [];
+
+      return await db.all(
+        `SELECT DISTINCT p.* FROM posts p
+         LEFT JOIN post_tags pt ON p.id = pt.postId
+         WHERE p.id != ?
+           AND p.published = 1
+           AND (
+             p.categoryId = ?
+             OR pt.tagId IN (
+               SELECT tagId FROM post_tags WHERE postId = ?
+             )
+           )
+         ORDER BY p.createdAt DESC
+         LIMIT ?`,
+        [postId, sourcePost.categoryId, postId, limit]
+      );
     },
   },
 

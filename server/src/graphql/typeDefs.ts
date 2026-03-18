@@ -112,6 +112,14 @@ export const typeDefs = gql`
 
     # Statistics
     stats: Stats!
+
+    # Advanced queries
+    popularPosts(limit: Int): [Post!]!
+    mostLikedPosts(limit: Int): [Post!]!
+    recentPosts(limit: Int): [Post!]!
+    topCommenters(limit: Int): [User!]!
+    postsByMultipleTags(tagIds: [ID!]!): [Post!]!
+    relatedPosts(postId: ID!, limit: Int): [Post!]!
   }
 
   type Stats {
@@ -120,6 +128,8 @@ export const typeDefs = gql`
     totalComments: Int!
     totalLikes: Int!
     totalDislikes: Int!
+    totalTags: Int!
+    totalViews: Int!
   }
 
   type Mutation {
